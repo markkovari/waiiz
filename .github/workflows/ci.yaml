@@ -22,9 +22,13 @@ jobs:
           version: "${{ env.ZIG_VERSION }}"
       - name: Cache zig
         uses: actions/cache@v3
+        env:
+          cache-name: zig-cache
         with:
           path: |
             ~/zig
+          key: zig-${{ env.cache-name }}
+          restore-keys: zig-${{ env.cache-name }}
       - name: Run zig build
         run: zig build test
       - name: Run zig format
