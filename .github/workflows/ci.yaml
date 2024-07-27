@@ -1,0 +1,26 @@
+name: Write an interpreter in Zig
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+env:
+  ZIG_VERSION: 0.13.0
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: "Setup zig version ${{ env.ZIG_VERSION }}"
+        uses: mlugg/setup-zig@v1
+        with:
+          version: "${{ env.ZIG_VERSION }}"
+      - name: Run zig build
+        run: zig build test
+      - name: Run zig format
+        run: zig fmt --check .
