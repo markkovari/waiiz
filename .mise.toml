@@ -1,0 +1,7 @@
+[tools]
+zig = "0.13.0"
+zls = "0.13.0"
+
+
+[plugins]
+zls = "https://github.com/dochang/asdf-zls.git"
