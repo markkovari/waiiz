@@ -47,7 +47,29 @@ pub const Lexer = struct {
         self.position = self.readPosition;
         self.readPosition += 1;
     }
+
+    fn nextToken(self: *Lexer) Token {
+        const currentToken = switch (self.character) {
+            '=' => newToken(TokenType.EQ, self.character),
+            ';' => newToken(TokenType.SEMICOLON, self.character),
+            '(' => newToken(TokenType.LPAREN, self.character),
+            ')' => newToken(TokenType.RPAREN, self.character),
+            ',' => newToken(TokenType.COMMA, self.character),
+            '+' => newToken(TokenType.PLUS, self.character),
+            '{' => newToken(TokenType.LBRACE, self.character),
+            '}' => newToken(TokenType.RBRACE, self.character),
+            0 => Token{ .token_type = TokenType.EOF, .literal = [_]u8{} },
+        };
+
+        // Progress to the next character.
+        self.readChar();
+        return currentToken;
+    }
 };
+
+fn newToken(tokenType: TokenType, ch: u8) Token {
+    return Token{ .token_type = tokenType, .literal = &ch };
+}
 
 test "lexer can be initialized" {
     const input = "let five = 5;";
@@ -61,4 +83,26 @@ test "lexer can be deinitialized" {
     var lexer = Lexer.init(input);
     defer lexer.deinit();
     try testing.expect(lexer.input.len == 13);
+}
+
+test "lexer reads the initial tokens" {
+    const input = "=+(){},;";
+    var lexer = Lexer.init(input);
+    defer lexer.deinit();
+    const tokens: []Token = [_]Token{
+        Token{ .token_type = TokenType.EQ, .literal = '=' },
+        Token{ .token_type = TokenType.PLUS, .literal = '+' },
+        Token{ .token_type = TokenType.LPAREN, .literal = "(" },
+        Token{ .token_type = TokenType.RPAREN, .literal = ")" },
+        Token{ .token_type = TokenType.LBRACE, .literal = "{" },
+        Token{ .token_type = TokenType.RBRACE, .literal = "}" },
+        Token{ .token_type = TokenType.COMMA, .literal = "," },
+        Token{ .token_type = TokenType.SEMICOLON, .literal = ";" },
+        Token{ .token_type = TokenType.EOF, .literal = []u8{} },
+    };
+    for (tokens) |expectedToken| {
+        const tok = lexer.nextToken();
+        try testing.expect(tok.token_type == expectedToken.token_type);
+        try testing.expect(mem.eql(u8, tok.literal, expectedToken.literal));
+    }
 }
