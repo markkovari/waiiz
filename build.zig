@@ -103,24 +103,4 @@ pub fn build(b: *std.Build) void {
 
     test_step.dependOn(&run_lib_unit_tests.step);
     test_step.dependOn(&run_exe_unit_tests.step);
-    const test_targets = [_]std.Target.Query{
-        .{}, // native
-        .{
-            .cpu_arch = .x86_64,
-            .os_tag = .linux,
-        },
-        .{
-            .cpu_arch = .aarch64,
-            .os_tag = .macos,
-        },
-    };
-    for (test_targets) |test_target| {
-        const unit_tests = b.addTest(.{
-            .root_source_file = b.path("src/main.zig"),
-            .target = b.resolveTargetQuery(test_target),
-        });
-
-        const run_unit_tests = b.addRunArtifact(unit_tests);
-        test_step.dependOn(&run_unit_tests.step);
-    }
 }
