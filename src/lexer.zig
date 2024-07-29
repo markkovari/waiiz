@@ -115,6 +115,7 @@ test "lexer reads the initial tokens" {
     for (tokens) |expectedToken| {
         const tok = lexer.nextToken();
         try testing.expect(tok.tokenType == expectedToken.tokenType);
+        std.debug.print("expected <{s}> <-> actual <{s}>\n", .{ expectedToken.literal, tok.literal });
         try testing.expect(mem.eql(u8, tok.literal, expectedToken.literal));
     }
 }
