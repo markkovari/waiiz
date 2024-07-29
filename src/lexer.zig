@@ -2,14 +2,34 @@ const token = @import("token.zig");
 const std = @import("std");
 const mem = std.mem;
 const testing = std.testing;
+const Allocator = std.mem.Allocator;
 
 const TokenType = token.TokenType;
 const Token = token.Token;
+
+const lookupIdent = token.lookupIdent;
+
+fn createLookup(allocatior: Allocator) std.StringHashMap(u8, TokenType) {
+    var map = std.StringHashMap(TokenType).init(allocatior);
+    defer map.deinit();
+    map.put("let", TokenType.LET) catch |err| {
+        std.debug.print("Error: {}\n", .{err});
+    };
+    map.put("let", TokenType.LET) catch |err| {
+        std.debug.print("Error: {}\n", .{err});
+    };
+    return map;
+}
+
+// var map = std.HashMap(u8, TokenType).init();
+// defer map.deinit();
+// map.put(key: K, value: V)
 
 /// Lexer is a struct that holds the input string and the current position in the input string.
 /// It also holds the current character and the next character.
 /// The Lexer struct is used to tokenize the input string.
 pub const Lexer = struct {
+    identifierLookup: std.StringHashMap(TokenType),
     /// The input string.
     input: []const u8,
 
@@ -22,20 +42,21 @@ pub const Lexer = struct {
     /// The current character in the input string.
     character: u8 = 0,
 
-    fn init(input: []const u8) Lexer {
+    fn init(input: []const u8, allocator: Allocator) Lexer {
         var lexer = Lexer{
             .input = input,
             .position = 0,
             .readPosition = 0,
             .character = input[0],
+            .identifierLookup = createLookup(allocator),
         };
+
         // Read the first character on initialization.
         lexer.readChar();
         return lexer;
     }
     fn deinit(self: *Lexer) void {
-        //TODO: Implement deinit if needed.
-        _ = self;
+        self.identifierLookup.deinit();
     }
 
     fn readChar(self: *Lexer) void {
@@ -59,31 +80,58 @@ pub const Lexer = struct {
             '{' => Token.new(TokenType.LBRACE, &[1]u8{self.character}),
             '}' => Token.new(TokenType.RBRACE, &[1]u8{self.character}),
             0 => Token.new(TokenType.EOF, ""),
-            else => Token.new(TokenType.ILLEGAL, &[1]u8{self.character}),
+            else => {
+                if (isLetter(self.character)) {
+                    const literal = self.readIdentifier();
+                    const tokenType = self.identifierLookup.get(literal) catch |err| {
+                        std.debug.print("Error: {}\n", .{err});
+                        return Token.new(TokenType.ILLEGAL, &[1]u8{self.character});
+                    };
+                    return Token.new(tokenType, literal);
+                } else {
+                    return Token.new(TokenType.ILLEGAL, &[1]u8{self.character});
+                }
+            },
         };
         // Progress to the next character.
         self.readChar();
         return currentToken;
     }
+
+    fn readIdentifier(self: *Lexer) []const u8 {
+        const position = self.position;
+        while (isLetter(self.character)) {
+            self.readChar();
+        }
+        return self.input[position..self.position];
+    }
 };
 
+fn isLetter(that: u8) bool {
+    return ('a' <= that and that <= 'z') or ('A' <= that and that <= 'Z');
+}
+
 test "lexer can be initialized" {
+    const testAllocator = std.testing.allocator;
     const input = "let five = 5;";
-    var lexer = Lexer.init(input);
+    var lexer = Lexer.init(input, testAllocator);
     defer lexer.deinit();
     try testing.expect(lexer.input.len == 13);
 }
 
 test "lexer can be deinitialized" {
+    const testAllocator = std.testing.allocator;
+
     const input = "let five = 5;";
-    var lexer = Lexer.init(input);
+    var lexer = Lexer.init(input, testAllocator);
     defer lexer.deinit();
     try testing.expect(lexer.input.len == 13);
 }
 
 test "lexer reads one token" {
+    const testAllocator = std.testing.allocator;
     const input = "=";
-    var lexer = Lexer.init(input);
+    var lexer = Lexer.init(input, testAllocator);
     defer lexer.deinit();
     const tokens = [_]Token{
         Token.new(TokenType.EQ, "="),
@@ -98,8 +146,10 @@ test "lexer reads one token" {
 }
 
 test "lexer reads the initial tokens" {
+    const testAllocator = std.testing.allocator;
+
     const input = "=+(){},;";
-    var lexer = Lexer.init(input);
+    var lexer = Lexer.init(input, testAllocator);
     defer lexer.deinit();
     const tokens = [_]Token{
         Token.new(TokenType.EQ, "="),
@@ -120,6 +170,8 @@ test "lexer reads the initial tokens" {
 }
 
 test "lexer reads netxt tokens with multiple chars" {
+    const testAllocator = std.testing.allocator;
+
     const input =
         \\let five = 5;
         \\let ten = 10;
@@ -128,7 +180,7 @@ test "lexer reads netxt tokens with multiple chars" {
         \\};
         \\let result = add(five, ten);
     ;
-    var lexer = Lexer.init(input);
+    var lexer = Lexer.init(input, testAllocator);
     defer lexer.deinit();
     const tokens = [_]Token{
         Token.new(TokenType.LET, "let"),
