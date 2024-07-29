@@ -86,6 +86,21 @@ pub fn build(b: *std.Build) void {
     // the `zig build --help` menu, providing a way for the user to request
     // running the unit tests.
     const test_step = b.step("test", "Run unit tests");
+
+    // List of source files to test
+    const source_files = [_][]const u8{
+        "src/lexer.zig",
+        "src/token.zig",
+    };
+
+    for (source_files) |source_file| {
+        const test_target = b.addTest(.{
+            .root_source_file = b.path(source_file),
+        });
+        const run_test = b.addRunArtifact(test_target);
+        test_step.dependOn(&run_test.step);
+    }
+
     test_step.dependOn(&run_lib_unit_tests.step);
     test_step.dependOn(&run_exe_unit_tests.step);
 }
