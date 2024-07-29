@@ -48,7 +48,7 @@ pub const Lexer = struct {
         self.readPosition += 1;
     }
 
-    fn nextToken(self: *Lexer) !Token {
+    fn nextToken(self: *Lexer) Token {
         const currentToken = switch (self.character) {
             '=' => Token.new(TokenType.EQ, &[1]u8{self.character}),
             ';' => Token.new(TokenType.SEMICOLON, &[1]u8{self.character}),
@@ -81,21 +81,21 @@ test "lexer can be deinitialized" {
     try testing.expect(lexer.input.len == 13);
 }
 
-// test "lexer reads one token" {
-//     const input = "=";
-//     var lexer = Lexer.init(input);
-//     defer lexer.deinit();
-//     const tokens = [_]Token{
-//         Token.new(TokenType.EQ, "="),
-//         Token.new(TokenType.EOF, ""),
-//     };
-//     for (tokens) |expectedToken| {
-//         const tok = try lexer.nextToken();
+test "lexer reads one token" {
+    const input = "=";
+    var lexer = Lexer.init(input);
+    defer lexer.deinit();
+    const tokens = [_]Token{
+        Token.new(TokenType.EQ, "="),
+        Token.new(TokenType.EOF, ""),
+    };
+    for (tokens) |expectedToken| {
+        const tok = lexer.nextToken();
 
-//         try testing.expect(tok.tokenType == expectedToken.tokenType);
-//         try testing.expect(mem.eql(u8, tok.literal, expectedToken.literal));
-//     }
-// }
+        try testing.expect(tok.tokenType == expectedToken.tokenType);
+        try testing.expect(mem.eql(u8, tok.literal, expectedToken.literal));
+    }
+}
 
 test "lexer reads the initial tokens" {
     const input = "=+(){},;";
@@ -113,7 +113,7 @@ test "lexer reads the initial tokens" {
         Token.new(TokenType.EOF, ""),
     };
     for (tokens) |expectedToken| {
-        const tok = try lexer.nextToken();
+        const tok = lexer.nextToken();
         try testing.expect(tok.tokenType == expectedToken.tokenType);
         try testing.expect(mem.eql(u8, tok.literal, expectedToken.literal));
     }
