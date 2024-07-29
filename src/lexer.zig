@@ -115,7 +115,64 @@ test "lexer reads the initial tokens" {
     for (tokens) |expectedToken| {
         const tok = lexer.nextToken();
         try testing.expect(tok.tokenType == expectedToken.tokenType);
-        std.debug.print("expected <{s}> <-> actual <{s}>\n", .{ expectedToken.literal, tok.literal });
+        try testing.expect(mem.eql(u8, tok.literal, expectedToken.literal));
+    }
+}
+
+test "lexer reads netxt tokens with multiple chars" {
+    const input =
+        \\let five = 5;
+        \\let ten = 10;
+        \\let add = fn(x, y) {
+        \\    x + y;
+        \\};
+        \\let result = add(five, ten);
+    ;
+    var lexer = Lexer.init(input);
+    defer lexer.deinit();
+    const tokens = [_]Token{
+        Token.new(TokenType.LET, "let"),
+        Token.new(TokenType.IDENT, "five"),
+        Token.new(TokenType.EQ, "="),
+        Token.new(TokenType.INT, "5"),
+        Token.new(TokenType.SEMICOLON, ";"),
+        Token.new(TokenType.LET, "let"),
+        Token.new(TokenType.IDENT, "ten"),
+        Token.new(TokenType.EQ, "="),
+        Token.new(TokenType.INT, "10"),
+        Token.new(TokenType.SEMICOLON, ";"),
+        Token.new(TokenType.LET, "let"),
+        Token.new(TokenType.IDENT, "add"),
+        Token.new(TokenType.EQ, "="),
+        Token.new(TokenType.FUNCTION, "fn"),
+        Token.new(TokenType.LPAREN, "("),
+        Token.new(TokenType.IDENT, "x"),
+        Token.new(TokenType.COMMA, ","),
+        Token.new(TokenType.IDENT, "y"),
+        Token.new(TokenType.RPAREN, ")"),
+        Token.new(TokenType.LBRACE, "{"),
+        Token.new(TokenType.IDENT, "x"),
+        Token.new(TokenType.PLUS, "+"),
+        Token.new(TokenType.IDENT, "y"),
+        Token.new(TokenType.SEMICOLON, ";"),
+        Token.new(TokenType.RBRACE, "}"),
+        Token.new(TokenType.SEMICOLON, ";"),
+        Token.new(TokenType.LET, "let"),
+        Token.new(TokenType.IDENT, "result"),
+        Token.new(TokenType.EQ, "="),
+        Token.new(TokenType.IDENT, "add"),
+        Token.new(TokenType.LPAREN, "("),
+        Token.new(TokenType.IDENT, "five"),
+        Token.new(TokenType.COMMA, ","),
+        Token.new(TokenType.IDENT, "ten"),
+        Token.new(TokenType.RPAREN, ")"),
+        Token.new(TokenType.SEMICOLON, ";"),
+        Token.new(TokenType.EOF, ""),
+    };
+
+    for (tokens) |expectedToken| {
+        const tok = lexer.nextToken();
+        try testing.expect(tok.tokenType == expectedToken.tokenType);
         try testing.expect(mem.eql(u8, tok.literal, expectedToken.literal));
     }
 }
