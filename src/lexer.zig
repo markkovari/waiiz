@@ -17,7 +17,7 @@ pub const Lexer = struct {
     position: usize = 0,
 
     // current reader position in input (after current char).
-    readPosition: usize = 1,
+    readPosition: usize = 0,
 
     /// The current character in the input string.
     character: u8 = 0,
@@ -26,7 +26,7 @@ pub const Lexer = struct {
         var lexer = Lexer{
             .input = input,
             .position = 0,
-            .readPosition = 1,
+            .readPosition = 0,
             .character = input[0],
         };
         // Read the first character on initialization.
@@ -47,6 +47,24 @@ pub const Lexer = struct {
         self.position = self.readPosition;
         self.readPosition += 1;
     }
+
+    fn nextToken(self: *Lexer) Token {
+        const currentToken = switch (self.character) {
+            '=' => Token.new(TokenType.EQ, &[1]u8{self.character}),
+            ';' => Token.new(TokenType.SEMICOLON, &[1]u8{self.character}),
+            '(' => Token.new(TokenType.LPAREN, &[1]u8{self.character}),
+            ')' => Token.new(TokenType.RPAREN, &[1]u8{self.character}),
+            ',' => Token.new(TokenType.COMMA, &[1]u8{self.character}),
+            '+' => Token.new(TokenType.PLUS, &[1]u8{self.character}),
+            '{' => Token.new(TokenType.LBRACE, &[1]u8{self.character}),
+            '}' => Token.new(TokenType.RBRACE, &[1]u8{self.character}),
+            0 => Token.new(TokenType.EOF, ""),
+            else => Token.new(TokenType.ILLEGAL, &[1]u8{self.character}),
+        };
+        // Progress to the next character.
+        self.readChar();
+        return currentToken;
+    }
 };
 
 test "lexer can be initialized" {
@@ -61,4 +79,43 @@ test "lexer can be deinitialized" {
     var lexer = Lexer.init(input);
     defer lexer.deinit();
     try testing.expect(lexer.input.len == 13);
+}
+
+test "lexer reads one token" {
+    const input = "=";
+    var lexer = Lexer.init(input);
+    defer lexer.deinit();
+    const tokens = [_]Token{
+        Token.new(TokenType.EQ, "="),
+        Token.new(TokenType.EOF, ""),
+    };
+    for (tokens) |expectedToken| {
+        const tok = lexer.nextToken();
+
+        try testing.expect(tok.tokenType == expectedToken.tokenType);
+        try testing.expect(mem.eql(u8, tok.literal, expectedToken.literal));
+    }
+}
+
+test "lexer reads the initial tokens" {
+    const input = "=+(){},;";
+    var lexer = Lexer.init(input);
+    defer lexer.deinit();
+    const tokens = [_]Token{
+        Token.new(TokenType.EQ, "="),
+        Token.new(TokenType.PLUS, "+"),
+        Token.new(TokenType.LPAREN, "("),
+        Token.new(TokenType.RPAREN, ")"),
+        Token.new(TokenType.LBRACE, "{"),
+        Token.new(TokenType.RBRACE, "}"),
+        Token.new(TokenType.COMMA, ","),
+        Token.new(TokenType.SEMICOLON, ";"),
+        Token.new(TokenType.EOF, ""),
+    };
+    for (tokens) |expectedToken| {
+        const tok = lexer.nextToken();
+        try testing.expect(tok.tokenType == expectedToken.tokenType);
+        std.debug.print("expected <{s}> <-> actual <{s}>\n", .{ expectedToken.literal, tok.literal });
+        try testing.expect(mem.eql(u8, tok.literal, expectedToken.literal));
+    }
 }
