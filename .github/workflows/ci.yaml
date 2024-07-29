@@ -30,6 +30,6 @@ jobs:
           key: zig-${{ env.cache-name }}
           restore-keys: zig-${{ env.cache-name }}
       - name: Run zig build
-        run: zig build test  --summary all
+        run: rm -rf .zig-cache/ && zig build test --summary all --verbose
       - name: Run zig format
         run: zig fmt --check .
