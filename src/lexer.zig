@@ -7,24 +7,6 @@ const Allocator = std.mem.Allocator;
 const TokenType = token.TokenType;
 const Token = token.Token;
 
-const lookupIdent = token.lookupIdent;
-
-fn createLookup(allocatior: Allocator) std.StringHashMap(u8, TokenType) {
-    var map = std.StringHashMap(TokenType).init(allocatior);
-    defer map.deinit();
-    map.put("let", TokenType.LET) catch |err| {
-        std.debug.print("Error: {}\n", .{err});
-    };
-    map.put("let", TokenType.LET) catch |err| {
-        std.debug.print("Error: {}\n", .{err});
-    };
-    return map;
-}
-
-// var map = std.HashMap(u8, TokenType).init();
-// defer map.deinit();
-// map.put(key: K, value: V)
-
 /// Lexer is a struct that holds the input string and the current position in the input string.
 /// It also holds the current character and the next character.
 /// The Lexer struct is used to tokenize the input string.
@@ -43,12 +25,19 @@ pub const Lexer = struct {
     character: u8 = 0,
 
     fn init(input: []const u8, allocator: Allocator) Lexer {
+        var identLookup = std.StringHashMap(TokenType).init(allocator);
+        identLookup.put("let", .LET) catch |err| {
+            std.debug.print("cannot create hashmap entry {}", .{err});
+        };
+        identLookup.put("fn", .FUNCTION) catch |err| {
+            std.debug.print("cannot create hashmap entry {}", .{err});
+        };
         var lexer = Lexer{
             .input = input,
             .position = 0,
             .readPosition = 0,
             .character = input[0],
-            .identifierLookup = createLookup(allocator),
+            .identifierLookup = identLookup,
         };
 
         // Read the first character on initialization.
@@ -83,11 +72,11 @@ pub const Lexer = struct {
             else => {
                 if (isLetter(self.character)) {
                     const literal = self.readIdentifier();
-                    const tokenType = self.identifierLookup.get(literal) catch |err| {
-                        std.debug.print("Error: {}\n", .{err});
+                    if (self.identifierLookup.get(literal)) |tType| {
+                        return Token.new(tType, literal);
+                    } else {
                         return Token.new(TokenType.ILLEGAL, &[1]u8{self.character});
-                    };
-                    return Token.new(tokenType, literal);
+                    }
                 } else {
                     return Token.new(TokenType.ILLEGAL, &[1]u8{self.character});
                 }
@@ -109,6 +98,12 @@ pub const Lexer = struct {
 
 fn isLetter(that: u8) bool {
     return ('a' <= that and that <= 'z') or ('A' <= that and that <= 'Z');
+}
+test "isLetter works as expected" {
+    try testing.expect(isLetter('a'));
+    try testing.expect(isLetter('A'));
+    try testing.expect(isLetter('x'));
+    try testing.expect(!isLetter('9'));
 }
 
 test "lexer can be initialized" {
@@ -169,7 +164,7 @@ test "lexer reads the initial tokens" {
     }
 }
 
-test "lexer reads netxt tokens with multiple chars" {
+test "lexer reads next tokens with multiple chars" {
     const testAllocator = std.testing.allocator;
 
     const input =
@@ -224,7 +219,7 @@ test "lexer reads netxt tokens with multiple chars" {
 
     for (tokens) |expectedToken| {
         const tok = lexer.nextToken();
-        try testing.expect(tok.tokenType == expectedToken.tokenType);
+        try std.io.getStdOut().writeAll(tok.toString());
         try testing.expect(mem.eql(u8, tok.literal, expectedToken.literal));
     }
 }
