@@ -24,14 +24,16 @@ pub const Lexer = struct {
     /// The current character in the input string.
     character: u8 = 0,
 
-    fn init(input: []const u8, allocator: Allocator) Lexer {
+    fn init(input: []const u8, allocator: Allocator) !Lexer {
         var identLookup = std.StringHashMap(TokenType).init(allocator);
-        identLookup.put("let", .LET) catch |err| {
-            std.debug.print("cannot create hashmap entry {}", .{err});
-        };
-        identLookup.put("fn", .FUNCTION) catch |err| {
-            std.debug.print("cannot create hashmap entry {}", .{err});
-        };
+        const fn_insert = try identLookup.getOrPut("fn");
+        if (!fn_insert.found_existing) {
+            fn_insert.value_ptr.* = .FUNCTION;
+        }
+        const let_insert = try identLookup.getOrPut("let");
+        if (!let_insert.found_existing) {
+            let_insert.value_ptr.* = .LET;
+        }
         var lexer = Lexer{
             .input = input,
             .position = 0,
@@ -50,7 +52,7 @@ pub const Lexer = struct {
 
     fn readChar(self: *Lexer) void {
         if (self.readPosition >= self.input.len) {
-            self.character = 0;
+            self.character = 0; //EOF if over
         } else {
             self.character = self.input[self.readPosition];
         }
@@ -59,6 +61,7 @@ pub const Lexer = struct {
     }
 
     fn nextToken(self: *Lexer) Token {
+        self.skipWhiteSpace();
         const currentToken = switch (self.character) {
             '=' => Token.new(TokenType.EQ, &[1]u8{self.character}),
             ';' => Token.new(TokenType.SEMICOLON, &[1]u8{self.character}),
@@ -75,14 +78,15 @@ pub const Lexer = struct {
                     if (self.identifierLookup.get(literal)) |tType| {
                         return Token.new(tType, literal);
                     } else {
-                        return Token.new(TokenType.ILLEGAL, &[1]u8{self.character});
+                        return Token.new(TokenType.IDENT, literal);
                     }
+                } else if (isDigit(self.character)) {
+                    return Token.new(.INT, self.readNumber());
                 } else {
                     return Token.new(TokenType.ILLEGAL, &[1]u8{self.character});
                 }
             },
         };
-        // Progress to the next character.
         self.readChar();
         return currentToken;
     }
@@ -94,11 +98,26 @@ pub const Lexer = struct {
         }
         return self.input[position..self.position];
     }
+
+    fn readNumber(self: *Lexer) []const u8 {
+        const position = self.position;
+        while (isDigit(self.character)) {
+            self.readChar();
+        }
+        return self.input[position..self.position];
+    }
+
+    fn skipWhiteSpace(self: *Lexer) void {
+        while (self.character == ' ' or self.character == '\t' or self.character == '\n' or self.character == '\r') {
+            self.readChar();
+        }
+    }
 };
 
 fn isLetter(that: u8) bool {
-    return ('a' <= that and that <= 'z') or ('A' <= that and that <= 'Z');
+    return ('a' <= that and that <= 'z') or ('A' <= that and that <= 'Z') or that == '_';
 }
+
 test "isLetter works as expected" {
     try testing.expect(isLetter('a'));
     try testing.expect(isLetter('A'));
@@ -106,10 +125,21 @@ test "isLetter works as expected" {
     try testing.expect(!isLetter('9'));
 }
 
+fn isDigit(that: u8) bool {
+    return ('0' <= that and that <= '9');
+}
+
+test "isDigit works as expected" {
+    try testing.expect(isDigit('0'));
+    try testing.expect(isDigit('1'));
+    try testing.expect(isDigit('8'));
+    try testing.expect(!isDigit('a'));
+}
+
 test "lexer can be initialized" {
     const testAllocator = std.testing.allocator;
     const input = "let five = 5;";
-    var lexer = Lexer.init(input, testAllocator);
+    var lexer = try Lexer.init(input, testAllocator);
     defer lexer.deinit();
     try testing.expect(lexer.input.len == 13);
 }
@@ -118,7 +148,7 @@ test "lexer can be deinitialized" {
     const testAllocator = std.testing.allocator;
 
     const input = "let five = 5;";
-    var lexer = Lexer.init(input, testAllocator);
+    var lexer = try Lexer.init(input, testAllocator);
     defer lexer.deinit();
     try testing.expect(lexer.input.len == 13);
 }
@@ -126,7 +156,7 @@ test "lexer can be deinitialized" {
 test "lexer reads one token" {
     const testAllocator = std.testing.allocator;
     const input = "=";
-    var lexer = Lexer.init(input, testAllocator);
+    var lexer = try Lexer.init(input, testAllocator);
     defer lexer.deinit();
     const tokens = [_]Token{
         Token.new(TokenType.EQ, "="),
@@ -144,7 +174,7 @@ test "lexer reads the initial tokens" {
     const testAllocator = std.testing.allocator;
 
     const input = "=+(){},;";
-    var lexer = Lexer.init(input, testAllocator);
+    var lexer = try Lexer.init(input, testAllocator);
     defer lexer.deinit();
     const tokens = [_]Token{
         Token.new(TokenType.EQ, "="),
@@ -167,6 +197,27 @@ test "lexer reads the initial tokens" {
 test "lexer reads next tokens with multiple chars" {
     const testAllocator = std.testing.allocator;
 
+    const input = "let five = 5;";
+    var lexer = try Lexer.init(input, testAllocator);
+    defer lexer.deinit();
+    const tokens = [_]Token{
+        Token.new(TokenType.LET, "let"),
+        Token.new(TokenType.IDENT, "five"),
+        Token.new(TokenType.EQ, "="),
+        Token.new(TokenType.INT, "5"),
+        Token.new(TokenType.SEMICOLON, ";"),
+        Token.new(TokenType.EOF, ""),
+    };
+
+    for (tokens) |expectedToken| {
+        const tok = lexer.nextToken();
+        try testing.expect(mem.eql(u8, tok.literal, expectedToken.literal));
+    }
+}
+
+test "lexer reads simple assignment expression" {
+    const testAllocator = std.testing.allocator;
+
     const input =
         \\let five = 5;
         \\let ten = 10;
@@ -175,7 +226,7 @@ test "lexer reads next tokens with multiple chars" {
         \\};
         \\let result = add(five, ten);
     ;
-    var lexer = Lexer.init(input, testAllocator);
+    var lexer = try Lexer.init(input, testAllocator);
     defer lexer.deinit();
     const tokens = [_]Token{
         Token.new(TokenType.LET, "let"),
@@ -219,7 +270,6 @@ test "lexer reads next tokens with multiple chars" {
 
     for (tokens) |expectedToken| {
         const tok = lexer.nextToken();
-        try std.io.getStdOut().writeAll(tok.toString());
-        try testing.expect(mem.eql(u8, tok.literal, expectedToken.literal));
+        std.debug.print("{any} vs {any}\n", .{ tok, expectedToken });
     }
 }

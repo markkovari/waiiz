@@ -10,24 +10,6 @@ pub const Token = struct {
     pub fn new(tokenType: TokenType, literal: []const u8) Token {
         return .{ .tokenType = tokenType, .literal = literal };
     }
-
-    pub fn toString(self: Token) []const u8 {
-        // return the whole struct serialized into a string
-        // for debugging purposes
-
-        // allocate a buffer to hold the string
-        var buffer = []u8{0} ** 128;
-        var writer = buffer.writer();
-
-        // write the token type
-        try writer.print("{s}", self.tokenType);
-
-        // write the literal
-        try writer.print(" {s}", self.literal);
-
-        // return the buffer as a slice
-        return buffer;
-    }
 };
 
 test "newToken" {
