@@ -14,7 +14,7 @@ pub const Token = struct {
 
 test "newToken" {
     const mem = @import("std").mem;
-    const token = Token.new(TokenType.PLUS, "+");
-    try expect(token.tokenType == TokenType.PLUS);
+    const token = Token.new(.PLUS, "+");
+    try expect(token.tokenType == .PLUS);
     try expect(mem.eql(u8, token.literal, "+"));
 }
