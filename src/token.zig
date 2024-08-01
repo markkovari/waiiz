@@ -1,7 +1,39 @@
 const tests = @import("std").testing;
 const expect = tests.expect;
 
-pub const TokenType = enum { ILLEGAL, EOF, IDENT, INT, ASSIGN, PLUS, COMMA, SEMICOLON, LPAREN, RPAREN, LBRACE, RBRACE, FUNCTION, LET, EQ };
+pub const TokenType = enum {
+    // Special tokens
+    ILLEGAL,
+    EOF,
+    IDENT,
+    INT,
+    ASSIGN,
+    COMMA,
+    SEMICOLON,
+    LPAREN,
+    RPAREN,
+    LBRACE,
+    RBRACE,
+
+    // Operators
+    EQ,
+    PLUS,
+    MINUS,
+    BANG,
+    ASTERISK,
+    SLASH,
+    LT,
+    GT,
+
+    // Built-in keywords
+    LET,
+    FUNCTION,
+    TRUE,
+    FALSE,
+    IF,
+    ELSE,
+    RETURN,
+};
 
 pub const Token = struct {
     tokenType: TokenType,
