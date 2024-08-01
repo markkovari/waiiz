@@ -34,6 +34,27 @@ pub const Lexer = struct {
         if (!let_insert.found_existing) {
             let_insert.value_ptr.* = .LET;
         }
+        const true_insert = try identLookup.getOrPut("true");
+        if (!true_insert.found_existing) {
+            true_insert.value_ptr.* = .TRUE;
+        }
+        const false_insert = try identLookup.getOrPut("false");
+        if (!false_insert.found_existing) {
+            false_insert.value_ptr.* = .FALSE;
+        }
+        const if_insert = try identLookup.getOrPut("if");
+        if (!if_insert.found_existing) {
+            if_insert.value_ptr.* = .IF;
+        }
+        const else_insert = try identLookup.getOrPut("else");
+        if (!else_insert.found_existing) {
+            else_insert.value_ptr.* = .ELSE;
+        }
+        const return_insert = try identLookup.getOrPut("return");
+        if (!return_insert.found_existing) {
+            return_insert.value_ptr.* = .RETURN;
+        }
+
         var lexer = Lexer{
             .input = input,
             .position = 0,
@@ -63,14 +84,21 @@ pub const Lexer = struct {
     fn nextToken(self: *Lexer) Token {
         self.skipWhiteSpace();
         const currentToken = switch (self.character) {
-            '=' => Token.new(.EQ, &[1]u8{self.character}),
-            ';' => Token.new(.SEMICOLON, &[1]u8{self.character}),
-            '(' => Token.new(.LPAREN, &[1]u8{self.character}),
-            ')' => Token.new(.RPAREN, &[1]u8{self.character}),
-            ',' => Token.new(.COMMA, &[1]u8{self.character}),
-            '+' => Token.new(.PLUS, &[1]u8{self.character}),
-            '{' => Token.new(.LBRACE, &[1]u8{self.character}),
-            '}' => Token.new(.RBRACE, &[1]u8{self.character}),
+            // this was self.character on the right side of the =>, but it was not working for some reason
+            '=' => Token.new(.EQ, &[1]u8{'='}),
+            '-' => Token.new(.MINUS, &[1]u8{'-'}),
+            ';' => Token.new(.SEMICOLON, &[1]u8{';'}),
+            '(' => Token.new(.LPAREN, &[1]u8{'('}),
+            ')' => Token.new(.RPAREN, &[1]u8{')'}),
+            ',' => Token.new(.COMMA, &[1]u8{','}),
+            '+' => Token.new(.PLUS, &[1]u8{'+'}),
+            '{' => Token.new(.LBRACE, &[1]u8{'{'}),
+            '}' => Token.new(.RBRACE, &[1]u8{'}'}),
+            '*' => Token.new(.ASTERISK, &[1]u8{'*'}),
+            '/' => Token.new(.SLASH, &[1]u8{'/'}),
+            '!' => Token.new(.BANG, &[1]u8{'!'}),
+            '<' => Token.new(.LT, &[1]u8{'<'}),
+            '>' => Token.new(.GT, &[1]u8{'>'}),
             0 => Token.new(.EOF, ""),
             else => {
                 if (isLetter(self.character)) {
@@ -82,9 +110,8 @@ pub const Lexer = struct {
                     }
                 } else if (isDigit(self.character)) {
                     return Token.new(.INT, self.readNumber());
-                } else {
-                    return Token.new(.ILLEGAL, &[1]u8{self.character});
                 }
+                return Token.new(.ILLEGAL, &[1]u8{self.character});
             },
         };
         self.readChar();
@@ -162,12 +189,15 @@ test "lexer reads one token" {
         Token.new(.EQ, "="),
         Token.new(.EOF, ""),
     };
-    for (tokens) |expectedToken| {
-        const tok = lexer.nextToken();
+    try testing.expectEqual(tokens.len, 2);
 
-        try testing.expect(tok.tokenType == expectedToken.tokenType);
-        try testing.expect(mem.eql(u8, tok.literal, expectedToken.literal));
-    }
+    const tok = lexer.nextToken();
+    try testing.expectEqual(tok.tokenType, .EQ);
+    try testing.expect(mem.eql(u8, tok.literal, tokens[0].literal));
+
+    const tok2 = lexer.nextToken();
+    try testing.expectEqual(tok2.tokenType, .EOF);
+    try testing.expect(mem.eql(u8, tok2.literal, tokens[1].literal));
 }
 
 test "lexer reads the initial tokens" {
@@ -265,6 +295,102 @@ test "lexer reads simple assignment expression" {
         Token.new(.IDENT, "ten"),
         Token.new(.RPAREN, ")"),
         Token.new(.SEMICOLON, ";"),
+        Token.new(.EOF, ""),
+    };
+
+    for (tokens) |expectedToken| {
+        const tok = lexer.nextToken();
+        try testing.expectEqual(tok.tokenType, expectedToken.tokenType);
+        try testing.expect(mem.eql(u8, tok.literal, expectedToken.literal));
+    }
+}
+
+test "lexer reads simple assignment expression and some standalone mathematical ones, with return statement" {
+    const testAllocator = std.testing.allocator;
+
+    const input =
+        \\let five = 5;
+        \\let ten = 10;
+        \\let add = fn(x, y) {
+        \\    x + y;
+        \\};
+        \\let result = add(five, ten);
+        \\!-/*5;
+        \\5 < 10 > 5;
+        \\if (5 < 10) {
+        \\    return true;
+        \\} else {
+        \\    return false;
+        \\}
+    ;
+    var lexer = try Lexer.init(input, testAllocator);
+    defer lexer.deinit();
+    const tokens = [_]Token{
+        Token.new(.LET, "let"),
+        Token.new(.IDENT, "five"),
+        Token.new(.EQ, "="),
+        Token.new(.INT, "5"),
+        Token.new(.SEMICOLON, ";"),
+        Token.new(.LET, "let"),
+        Token.new(.IDENT, "ten"),
+        Token.new(.EQ, "="),
+        Token.new(.INT, "10"),
+        Token.new(.SEMICOLON, ";"),
+        Token.new(.LET, "let"),
+        Token.new(.IDENT, "add"),
+        Token.new(.EQ, "="),
+        Token.new(.FUNCTION, "fn"),
+        Token.new(.LPAREN, "("),
+        Token.new(.IDENT, "x"),
+        Token.new(.COMMA, ","),
+        Token.new(.IDENT, "y"),
+        Token.new(.RPAREN, ")"),
+        Token.new(.LBRACE, "{"),
+        Token.new(.IDENT, "x"),
+        Token.new(.PLUS, "+"),
+        Token.new(.IDENT, "y"),
+        Token.new(.SEMICOLON, ";"),
+        Token.new(.RBRACE, "}"),
+        Token.new(.SEMICOLON, ";"),
+        Token.new(.LET, "let"),
+        Token.new(.IDENT, "result"),
+        Token.new(.EQ, "="),
+        Token.new(.IDENT, "add"),
+        Token.new(.LPAREN, "("),
+        Token.new(.IDENT, "five"),
+        Token.new(.COMMA, ","),
+        Token.new(.IDENT, "ten"),
+        Token.new(.RPAREN, ")"),
+        Token.new(.SEMICOLON, ";"),
+        Token.new(.BANG, "!"),
+        Token.new(.MINUS, "-"),
+        Token.new(.SLASH, "/"),
+        Token.new(.ASTERISK, "*"),
+        Token.new(.INT, "5"),
+        Token.new(.SEMICOLON, ";"),
+        Token.new(.INT, "5"),
+        Token.new(.LT, "<"),
+        Token.new(.INT, "10"),
+        Token.new(.GT, ">"),
+        Token.new(.INT, "5"),
+        Token.new(.SEMICOLON, ";"),
+        Token.new(.IF, "if"),
+        Token.new(.LPAREN, "("),
+        Token.new(.INT, "5"),
+        Token.new(.LT, "<"),
+        Token.new(.INT, "10"),
+        Token.new(.RPAREN, ")"),
+        Token.new(.LBRACE, "{"),
+        Token.new(.RETURN, "return"),
+        Token.new(.TRUE, "true"),
+        Token.new(.SEMICOLON, ";"),
+        Token.new(.RBRACE, "}"),
+        Token.new(.ELSE, "else"),
+        Token.new(.LBRACE, "{"),
+        Token.new(.RETURN, "return"),
+        Token.new(.FALSE, "false"),
+        Token.new(.SEMICOLON, ";"),
+        Token.new(.RBRACE, "}"),
         Token.new(.EOF, ""),
     };
 
