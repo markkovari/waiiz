@@ -92,6 +92,7 @@ pub fn build(b: *std.Build) void {
         "src/lexer.zig",
         "src/token.zig",
         "src/repl.zig",
+        "src/ast.zig",
     };
 
     for (source_files) |source_file| {
