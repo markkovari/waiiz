@@ -26,34 +26,13 @@ pub const Lexer = struct {
 
     fn init(input: []const u8, allocator: Allocator) !Lexer {
         var identLookup = std.StringHashMap(TokenType).init(allocator);
-        const fn_insert = try identLookup.getOrPut("fn");
-        if (!fn_insert.found_existing) {
-            fn_insert.value_ptr.* = .FUNCTION;
-        }
-        const let_insert = try identLookup.getOrPut("let");
-        if (!let_insert.found_existing) {
-            let_insert.value_ptr.* = .LET;
-        }
-        const true_insert = try identLookup.getOrPut("true");
-        if (!true_insert.found_existing) {
-            true_insert.value_ptr.* = .TRUE;
-        }
-        const false_insert = try identLookup.getOrPut("false");
-        if (!false_insert.found_existing) {
-            false_insert.value_ptr.* = .FALSE;
-        }
-        const if_insert = try identLookup.getOrPut("if");
-        if (!if_insert.found_existing) {
-            if_insert.value_ptr.* = .IF;
-        }
-        const else_insert = try identLookup.getOrPut("else");
-        if (!else_insert.found_existing) {
-            else_insert.value_ptr.* = .ELSE;
-        }
-        const return_insert = try identLookup.getOrPut("return");
-        if (!return_insert.found_existing) {
-            return_insert.value_ptr.* = .RETURN;
-        }
+        try identLookup.put("fn", .FUNCTION);
+        try identLookup.put("let", .LET);
+        try identLookup.put("true", .TRUE);
+        try identLookup.put("false", .FALSE);
+        try identLookup.put("if", .IF);
+        try identLookup.put("else", .ELSE);
+        try identLookup.put("return", .RETURN);
 
         var lexer = Lexer{
             .input = input,
@@ -102,18 +81,18 @@ pub const Lexer = struct {
                     break :bangBlock Token.new(.BANG, "!");
                 }
             },
-            '-' => Token.new(.MINUS, &[1]u8{'-'}),
-            ';' => Token.new(.SEMICOLON, &[1]u8{';'}),
-            '(' => Token.new(.LPAREN, &[1]u8{'('}),
-            ')' => Token.new(.RPAREN, &[1]u8{')'}),
-            ',' => Token.new(.COMMA, &[1]u8{','}),
-            '+' => Token.new(.PLUS, &[1]u8{'+'}),
-            '{' => Token.new(.LBRACE, &[1]u8{'{'}),
-            '}' => Token.new(.RBRACE, &[1]u8{'}'}),
-            '*' => Token.new(.ASTERISK, &[1]u8{'*'}),
-            '/' => Token.new(.SLASH, &[1]u8{'/'}),
-            '<' => Token.new(.LT, &[1]u8{'<'}),
-            '>' => Token.new(.GT, &[1]u8{'>'}),
+            '-' => Token.new(.MINUS, "-"),
+            ';' => Token.new(.SEMICOLON, ";"),
+            '(' => Token.new(.LPAREN, "("),
+            ')' => Token.new(.RPAREN, ")"),
+            ',' => Token.new(.COMMA, ","),
+            '+' => Token.new(.PLUS, "+"),
+            '{' => Token.new(.LBRACE, "{"),
+            '}' => Token.new(.RBRACE, "}"),
+            '*' => Token.new(.ASTERISK, "*"),
+            '/' => Token.new(.SLASH, "/"),
+            '<' => Token.new(.LT, "<"),
+            '>' => Token.new(.GT, ">"),
             0 => Token.new(.EOF, ""),
             else => {
                 if (isLetter(self.character)) {
