@@ -85,7 +85,7 @@ pub const Lexer = struct {
         self.skipWhiteSpace();
         const currentToken = switch (self.character) {
             // this was self.character on the right side of the =>, but it was not working for some reason
-            '=' => Token.new(.EQ, &[1]u8{'='}),
+            '=' => Token.new(.ASSIGN, &[1]u8{'='}),
             '-' => Token.new(.MINUS, &[1]u8{'-'}),
             ';' => Token.new(.SEMICOLON, &[1]u8{';'}),
             '(' => Token.new(.LPAREN, &[1]u8{'('}),
@@ -186,7 +186,7 @@ test "lexer reads one token" {
     var lexer = try Lexer.init(input, testAllocator);
     defer lexer.deinit();
     const tokens = [_]Token{
-        Token.new(.EQ, "="),
+        Token.new(.ASSIGN, "="),
         Token.new(.EOF, ""),
     };
     try testing.expectEqual(tokens.len, 2);
@@ -207,7 +207,7 @@ test "lexer reads the initial tokens" {
     var lexer = try Lexer.init(input, testAllocator);
     defer lexer.deinit();
     const tokens = [_]Token{
-        Token.new(.EQ, "="),
+        Token.new(.ASSIGN, "="),
         Token.new(.PLUS, "+"),
         Token.new(.LPAREN, "("),
         Token.new(.RPAREN, ")"),
@@ -233,7 +233,7 @@ test "lexer reads next tokens with multiple chars" {
     const tokens = [_]Token{
         Token.new(.LET, "let"),
         Token.new(.IDENT, "five"),
-        Token.new(.EQ, "="),
+        Token.new(.ASSIGN, "="),
         Token.new(.INT, "5"),
         Token.new(.SEMICOLON, ";"),
         Token.new(.EOF, ""),
@@ -261,17 +261,17 @@ test "lexer reads simple assignment expression" {
     const tokens = [_]Token{
         Token.new(.LET, "let"),
         Token.new(.IDENT, "five"),
-        Token.new(.EQ, "="),
+        Token.new(.ASSIGN, "="),
         Token.new(.INT, "5"),
         Token.new(.SEMICOLON, ";"),
         Token.new(.LET, "let"),
         Token.new(.IDENT, "ten"),
-        Token.new(.EQ, "="),
+        Token.new(.ASSIGN, "="),
         Token.new(.INT, "10"),
         Token.new(.SEMICOLON, ";"),
         Token.new(.LET, "let"),
         Token.new(.IDENT, "add"),
-        Token.new(.EQ, "="),
+        Token.new(.ASSIGN, "="),
         Token.new(.FUNCTION, "fn"),
         Token.new(.LPAREN, "("),
         Token.new(.IDENT, "x"),
@@ -287,7 +287,7 @@ test "lexer reads simple assignment expression" {
         Token.new(.SEMICOLON, ";"),
         Token.new(.LET, "let"),
         Token.new(.IDENT, "result"),
-        Token.new(.EQ, "="),
+        Token.new(.ASSIGN, "="),
         Token.new(.IDENT, "add"),
         Token.new(.LPAREN, "("),
         Token.new(.IDENT, "five"),
@@ -322,23 +322,25 @@ test "lexer reads simple assignment expression and some standalone mathematical 
         \\} else {
         \\    return false;
         \\}
+        \\10 == 10;
+        \\10 != 9;
     ;
     var lexer = try Lexer.init(input, testAllocator);
     defer lexer.deinit();
     const tokens = [_]Token{
         Token.new(.LET, "let"),
         Token.new(.IDENT, "five"),
-        Token.new(.EQ, "="),
+        Token.new(.ASSIGN, "="),
         Token.new(.INT, "5"),
         Token.new(.SEMICOLON, ";"),
         Token.new(.LET, "let"),
         Token.new(.IDENT, "ten"),
-        Token.new(.EQ, "="),
+        Token.new(.ASSIGN, "="),
         Token.new(.INT, "10"),
         Token.new(.SEMICOLON, ";"),
         Token.new(.LET, "let"),
         Token.new(.IDENT, "add"),
-        Token.new(.EQ, "="),
+        Token.new(.ASSIGN, "="),
         Token.new(.FUNCTION, "fn"),
         Token.new(.LPAREN, "("),
         Token.new(.IDENT, "x"),
@@ -354,7 +356,7 @@ test "lexer reads simple assignment expression and some standalone mathematical 
         Token.new(.SEMICOLON, ";"),
         Token.new(.LET, "let"),
         Token.new(.IDENT, "result"),
-        Token.new(.EQ, "="),
+        Token.new(.ASSIGN, "="),
         Token.new(.IDENT, "add"),
         Token.new(.LPAREN, "("),
         Token.new(.IDENT, "five"),
@@ -391,6 +393,14 @@ test "lexer reads simple assignment expression and some standalone mathematical 
         Token.new(.FALSE, "false"),
         Token.new(.SEMICOLON, ";"),
         Token.new(.RBRACE, "}"),
+        Token.new(.IDENT, "10"),
+        Token.new(.EQ, "=="),
+        Token.new(.INT, "10"),
+        Token.new(.SEMICOLON, ";"),
+        Token.new(.INT, "10"),
+        Token.new(.NEQ, "!="),
+        Token.new(.INT, "9"),
+        Token.new(.SEMICOLON, ";"),
         Token.new(.EOF, ""),
     };
 
