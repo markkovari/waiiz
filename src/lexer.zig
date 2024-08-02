@@ -73,7 +73,7 @@ pub const Lexer = struct {
 
     fn readChar(self: *Lexer) void {
         if (self.readPosition >= self.input.len) {
-            self.character = 0; //EOF if over
+            self.character = 0;
         } else {
             self.character = self.input[self.readPosition];
         }
@@ -84,8 +84,24 @@ pub const Lexer = struct {
     fn nextToken(self: *Lexer) Token {
         self.skipWhiteSpace();
         const currentToken = switch (self.character) {
-            // this was self.character on the right side of the =>, but it was not working for some reason
-            '=' => Token.new(.ASSIGN, &[1]u8{'='}),
+            '=' => eqblk: {
+                const nextChar = self.peekChar();
+                if (nextChar == '=') {
+                    self.readChar();
+                    break :eqblk Token.new(.EQ, "==");
+                } else {
+                    break :eqblk Token.new(.ASSIGN, "=");
+                }
+            },
+            '!' => bangBlock: {
+                const nextChar = self.peekChar();
+                if (nextChar == '=') {
+                    self.readChar();
+                    break :bangBlock Token.new(.NEQ, "!=");
+                } else {
+                    break :bangBlock Token.new(.BANG, "!");
+                }
+            },
             '-' => Token.new(.MINUS, &[1]u8{'-'}),
             ';' => Token.new(.SEMICOLON, &[1]u8{';'}),
             '(' => Token.new(.LPAREN, &[1]u8{'('}),
@@ -96,7 +112,6 @@ pub const Lexer = struct {
             '}' => Token.new(.RBRACE, &[1]u8{'}'}),
             '*' => Token.new(.ASTERISK, &[1]u8{'*'}),
             '/' => Token.new(.SLASH, &[1]u8{'/'}),
-            '!' => Token.new(.BANG, &[1]u8{'!'}),
             '<' => Token.new(.LT, &[1]u8{'<'}),
             '>' => Token.new(.GT, &[1]u8{'>'}),
             0 => Token.new(.EOF, ""),
@@ -116,6 +131,14 @@ pub const Lexer = struct {
         };
         self.readChar();
         return currentToken;
+    }
+
+    fn peekChar(self: *Lexer) u8 {
+        if (self.readPosition >= self.input.len) {
+            return 0;
+        } else {
+            return self.input[self.readPosition];
+        }
     }
 
     fn readIdentifier(self: *Lexer) []const u8 {
@@ -192,7 +215,7 @@ test "lexer reads one token" {
     try testing.expectEqual(tokens.len, 2);
 
     const tok = lexer.nextToken();
-    try testing.expectEqual(tok.tokenType, .EQ);
+    try testing.expectEqual(tok.tokenType, .ASSIGN);
     try testing.expect(mem.eql(u8, tok.literal, tokens[0].literal));
 
     const tok2 = lexer.nextToken();
@@ -393,7 +416,7 @@ test "lexer reads simple assignment expression and some standalone mathematical 
         Token.new(.FALSE, "false"),
         Token.new(.SEMICOLON, ";"),
         Token.new(.RBRACE, "}"),
-        Token.new(.IDENT, "10"),
+        Token.new(.INT, "10"),
         Token.new(.EQ, "=="),
         Token.new(.INT, "10"),
         Token.new(.SEMICOLON, ";"),
