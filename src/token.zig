@@ -17,6 +17,7 @@ pub const TokenType = enum {
 
     // Operators
     EQ,
+    NEQ,
     PLUS,
     MINUS,
     BANG,
