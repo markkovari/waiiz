@@ -24,7 +24,7 @@ pub const Lexer = struct {
     /// The current character in the input string.
     character: u8 = 0,
 
-    fn init(input: []const u8, allocator: Allocator) !Lexer {
+    pub fn init(input: []const u8, allocator: Allocator) !Lexer {
         var identLookup = std.StringHashMap(TokenType).init(allocator);
         try identLookup.put("fn", .FUNCTION);
         try identLookup.put("let", .LET);
@@ -60,7 +60,7 @@ pub const Lexer = struct {
         self.readPosition += 1;
     }
 
-    fn nextToken(self: *Lexer) Token {
+    pub fn nextToken(self: *Lexer) Token {
         self.skipWhiteSpace();
         const currentToken = switch (self.character) {
             '=' => eqblk: {
