@@ -91,6 +91,7 @@ pub fn build(b: *std.Build) void {
     const source_files = [_][]const u8{
         "src/lexer.zig",
         "src/token.zig",
+        "src/repl.zig",
     };
 
     for (source_files) |source_file| {
