@@ -1,8 +1,10 @@
 const std = @import("std");
+const Token = @import("token.zig").Token;
 
 pub const Node = union(enum) {
     statement: *StatementNode,
     expression: *ExpressionNode,
+    program: *ProgramNode,
 
     pub fn tokenLiteral(self: Node) []u8 {
         switch (self) {
@@ -12,17 +14,43 @@ pub const Node = union(enum) {
     }
 };
 
-const StatementNode = struct {
-    node: Node,
-    pub fn tokenLiteral(self: StatementNode) []u8 {
-        return self.node.tokenLiteral();
+const StatementNode = union(enum) {
+    let: *LetStatement,
+    pub fn tokenLiteral() []u8 {
+        return "StatementNode";
+    }
+};
+
+const Identifier = struct {
+    token: Token,
+    value: []u8,
+    pub fn tokenLiteral(self: Identifier) []u8 {
+        return self.value;
+    }
+};
+
+const LetStatement = struct {
+    token: Token, // the token.LET token
+    name: Identifier,
+    value: ExpressionNode,
+    pub fn tokenLiteral(self: LetStatement) []u8 {
+        var out = std.ArrayList(u8).init(std.heap.page_allocator);
+        defer out.deinit();
+        out.appendSlice(self.token.literal);
+        out.appendSlice(" ");
+        out.appendSlice(self.name.tokenLiteral());
+        out.appendSlice(" = ");
+        if (self.value != null) {
+            out.appendSlice(self.value.tokenLiteral());
+        }
+        out.appendSlice(";");
+        return out.toOwnedSlice();
     }
 };
 
 const ExpressionNode = struct {
-    node: Node,
-    pub fn tokenLiteral(self: ExpressionNode) []u8 {
-        return self.node.tokenLiteral();
+    pub fn tokenLiteral() []u8 {
+        return "ExpressionNode";
     }
 };
 
