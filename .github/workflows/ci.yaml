@@ -7,8 +7,13 @@ on:
   pull_request:
     branches:
       - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
-  ZIG_VERSION: 0.13.0
+  ZIG_VERSION: 0.15.0-dev.734+adc4418ba
 
 jobs:
   build:
@@ -20,7 +25,7 @@ jobs:
         uses: mlugg/setup-zig@v1
         with:
           version: "${{ env.ZIG_VERSION }}"
-      - name: Run zig build
-        run: zig build test --summary all --verbose
       - name: Run zig format
         run: zig fmt --check .
+      - name: Run zig tests
+        run: zig build test --summary all --verbose
